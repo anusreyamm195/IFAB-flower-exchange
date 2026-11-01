@@ -3,29 +3,47 @@ declare(strict_types=1);
 
 // Keep sessions inside the project so the app does not depend on the
 // permissions of XAMPP's global temporary directory.
-$sessionPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.runtime' . DIRECTORY_SEPARATOR . 'sessions';
-if (!is_dir($sessionPath)) {
-    mkdir($sessionPath, 0775, true);
+$sessionPath = getenv('SESSION_SAVE_PATH');
+if ($sessionPath === false || $sessionPath === '') {
+    $sessionPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.runtime' . DIRECTORY_SEPARATOR . 'sessions';
 }
-session_save_path($sessionPath);
+if (!is_dir($sessionPath)) {
+    if (!mkdir($sessionPath, 0775, true) && !is_dir($sessionPath)) {
+        throw new RuntimeException('Unable to create the PHP session directory.');
+    }
+}
+if (!is_writable($sessionPath) || session_save_path($sessionPath) === false) {
+    throw new RuntimeException('The PHP session directory is not writable.');
+}
 session_start();
 
-define('DB_HOST', '127.0.0.1');
-define('DB_NAME', 'ifab_auction');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+$dbHost = getenv('DB_HOST');
+$dbName = getenv('DB_NAME');
+$dbUser = getenv('DB_USER');
+$dbPass = getenv('DB_PASS');
+$dbPort = getenv('DB_PORT');
+define('DB_HOST', $dbHost === false || $dbHost === '' ? '127.0.0.1' : $dbHost);
+define('DB_NAME', $dbName === false || $dbName === '' ? 'ifab_auction' : $dbName);
+define('DB_USER', $dbUser === false || $dbUser === '' ? 'root' : $dbUser);
+define('DB_PASS', $dbPass === false ? '' : $dbPass);
+define('DB_PORT', $dbPort === false || $dbPort === '' ? 3306 : (int)$dbPort);
 define('APP_NAME', 'IFAB Flower Exchange');
-define('BASE_URL',
-    ($_SERVER['SERVER_PORT'] ?? '') === '8000'
-        ? ''
-        : '/IFAB-Flower-Auction'
-);
+$baseUrl = getenv('APP_BASE_URL');
+if ($baseUrl === false) {
+    $host = strtolower((string)parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST));
+    if ($host !== '' && !in_array($host, ['localhost', '127.0.0.1', '::1'], true)) {
+        $baseUrl = '';
+    } else {
+        $baseUrl = ($_SERVER['SERVER_PORT'] ?? '') === '8000' ? '' : '/IFAB-Flower-Auction';
+    }
+}
+define('BASE_URL', rtrim($baseUrl, '/'));
 
 function db(): PDO {
     static $pdo = null;
     static $schemaReady = false;
     if ($pdo instanceof PDO) return $pdo;
-    $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+    $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
     $pdo = new PDO($dsn, DB_USER, DB_PASS, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

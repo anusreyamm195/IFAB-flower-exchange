@@ -1,5 +1,3 @@
-CREATE DATABASE IF NOT EXISTS ifab_auction CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE ifab_auction;
 CREATE TABLE admins(id INT AUTO_INCREMENT PRIMARY KEY,name VARCHAR(120) NOT NULL,email VARCHAR(190) NOT NULL UNIQUE,password_hash VARCHAR(255) NOT NULL,status ENUM('active','inactive') DEFAULT 'active',last_login DATETIME NULL,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE users(id INT AUTO_INCREMENT PRIMARY KEY,name VARCHAR(120) NOT NULL,email VARCHAR(190) NOT NULL UNIQUE,phone VARCHAR(30),role ENUM('grower','buyer') NOT NULL,status ENUM('pending','active','blocked') DEFAULT 'pending',password_hash VARCHAR(255) NOT NULL,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE growers(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT NOT NULL UNIQUE,business_name VARCHAR(180),farm_location VARCHAR(255),verification_status ENUM('pending','verified','rejected') DEFAULT 'pending',FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
